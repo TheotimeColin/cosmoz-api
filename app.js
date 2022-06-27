@@ -83,7 +83,13 @@ const upload = multer({ storage: storage })
 const server = require('http').Server(app)
 const io = require('socket.io')(server, {
     cors: {
-        origin: process.env.BASE_URL,
+        origin: function (origin, callback) {
+            if (allowedOrigins.indexOf(origin) > -1) {
+                callback(null, true)
+            } else {
+                callback(null, false)
+            }
+        },
         methods: ["GET", "POST"]
     }    
 })
