@@ -31,6 +31,7 @@ const { scrape } = require('./api/scraper')
 const { notificationRead } = require('./api/notification')
 const { consteCreate, consteApply, consteLeave, consteEnter, consteInviteLink, consteInviteLinkDelete } = require('./api/constellation')
 const { getToken } = require('./api/token')
+const { createChannel, postMessage } = require('./api/messages')
 
 const allowedOrigins = [
     'capacitor://localhost',
@@ -79,11 +80,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage })
 
-app.locals.s3 = s3
-app.locals.increment = AutoIncrementFactory(mongoose.connection)
-// app.locals.stripe = stripe
-app.locals.sendinBlue = SibApiV3Sdk
-
 const server = require('http').Server(app)
 const io = require('socket.io')(server, {
     cors: {
@@ -92,21 +88,20 @@ const io = require('socket.io')(server, {
     }    
 })
 
-const messages = []
-io.on('connection', (socket) => {
-    socket.on('last-messages', function (fn) {
-        fn(messages.slice(-50))
-    })
-
-    socket.on('send-message', function (message) {
-        messages.push(message)
-        socket.broadcast.emit('new-message', message)
-    })
-})
+app.locals.s3 = s3
+app.locals.increment = AutoIncrementFactory(mongoose.connection)
+// app.locals.stripe = stripe
+app.locals.sendinBlue = SibApiV3Sdk
+app.locals.io = io
 
 mongoose.connection.on('error', console.error.bind(console, 'connection error:'))
 
 mongoose.connection.once('open', async () => {
+    io.on('connection', (socket) => {
+        socket.on('send-message', function (message) {
+            socket.broadcast.emit('new-message', message)
+        })
+    })
 
     app.get('/entities/get', getEntities)
     app.post('/entities/get', getEntities)
@@ -121,6 +116,9 @@ mongoose.connection.once('open', async () => {
     app.post('/user/reset', requestResetPassword)
     app.post('/user/reset/confirm', resetPassword)
     app.post('/user/subscribe', subscribeNewsletter)
+
+    app.post('/messages/create-channel', createChannel)
+    app.post('/messages/post', upload.array('images', 4), postMessage)
 
     app.post('/gathering/book', updateBookingStatus)
 

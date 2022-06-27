@@ -11,6 +11,8 @@ const status = require('./status')
 const constellation = require('./constellation')
 const mention = require('./mention')
 const mail = require('./mail')
+const channelMessage = require('./channel-message')
+const channel = require('./channel')
 
 mongoose.connect(process.env.MONGO, { useNewUrlParser: true, useUnifiedTopology: true })
 
@@ -25,3 +27,5 @@ exports.status = status
 exports.constellation = constellation
 exports.mention = mention
 exports.mail = mail
+exports.channelMessage = channelMessage
+exports.channel = channel
