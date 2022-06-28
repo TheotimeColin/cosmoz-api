@@ -102,18 +102,29 @@ app.locals.io = io
 
 mongoose.connection.on('error', console.error.bind(console, 'connection error:'))
 
+const { authenticate } = require('./utils/user')
+
 mongoose.connection.once('open', async () => {
-    io.on('connection', (socket) => {
-        socket.on('send-message', function (message) {
-            socket.broadcast.emit('new-message', message)
+    io.on('connection', async (socket) => {
+        
+        let user = await authenticate(socket.handshake.headers)
+
+        if (user) {
+            socket.join(user._id.toString())
+        }
+
+        socket.on('join-room', (params) => {
+            if (params.unique) {
+                socket.leave(Array.from(socket.rooms).find(r => r.startsWith(params.type + '-')))
+            }
         })
 
-        socket.on('channel-writing', function () {
-            socket.broadcast.emit('channel-writing')
+        socket.on('channel-writing', function (params) {
+            io.to('channel-' + params.channel).emit('channel-writing', { ...params })
         })
 
-        socket.on('channel-writing-stop', function () {
-            socket.broadcast.emit('channel-writing-stop')
+        socket.on('channel-writing-stop', function (params) {
+            io.to('channel-' + params.channel).emit('channel-writing-stop', { ...params })
         })
     })
 

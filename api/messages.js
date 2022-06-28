@@ -90,7 +90,6 @@ exports.postMessage = async function (req, res) {
         }
 
         fields.content = striptags(fields.content)
-        fields.content = fields.content.replace(/\n/g, '<br>')
 
         let message = await Entities.channelMessage.model.create({
             ...fields,
@@ -106,8 +105,9 @@ exports.postMessage = async function (req, res) {
 
         data.channel = { ...channel._doc, lastMessage: data.message }
 
-        if (data.channel) req.app.locals.io.emit('new-channel', data.channel)
-        if (data.message) req.app.locals.io.emit('new-message', data.message)
+        if (data.channel) req.app.locals.io.to(channel.users.filter(u => !u.equals(user._id)).map(u => u.toString())).emit('new-channel', data.channel)
+        
+        if (data.message) req.app.locals.io.to(channel.users.filter(u => !u.equals(user._id)).map(u => u.toString())).emit('new-message', data.message)
     } catch (e) {
         console.error(e)
         errors.push(e.message)
