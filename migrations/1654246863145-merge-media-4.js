@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const { mediaCollection } = require('../api/entities/index')
+const { mediaCollection } = require('../entities/index')
 
 let Media = {
     write: 'user',

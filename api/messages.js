@@ -24,6 +24,7 @@ exports.createChannel = async function (req, res) {
 
         let channel = await Entities.channel.model.create({
             users: users.map(u => u._id),
+            readBy: [ user._id ],
             owner: user._id
         })
 
@@ -36,10 +37,13 @@ exports.createChannel = async function (req, res) {
 
             if (message) {
                 data.message = await Entities.channelMessage.model.findOne({ _id: message._id })
+
+                channel.lastMessage = message._id
+                await channel.save()
             }
         }
 
-        if (channel) data.channel = channel
+        if (channel) data.channel = { ...channel._doc, lastMessage: data.message }
 
         if (data.channel) req.app.locals.io.emit('new-channel', data.channel)
         if (data.message) req.app.locals.io.emit('new-message', data.message)
@@ -52,7 +56,7 @@ exports.createChannel = async function (req, res) {
 }
 
 exports.postMessage = async function (req, res) {
-    let data = null
+    let data = {}
     let errors = []
 
     try {
@@ -65,7 +69,7 @@ exports.postMessage = async function (req, res) {
         let user = await authenticate(req.headers)
         if (!user) throw Error('no-user')
 
-        let channel = await Entities.channel.model.findById(fields.channel)
+        let channel = await Entities.channel.model.findOne({ _id: fields.channel })
         if (!channel) throw Error('no-channel')
 
         if (req.files) {
@@ -88,15 +92,22 @@ exports.postMessage = async function (req, res) {
         fields.content = striptags(fields.content)
         fields.content = fields.content.replace(/\n/g, '<br>')
 
-        data = await Entities.channelMessage.model.create({
+        let message = await Entities.channelMessage.model.create({
             ...fields,
             channel: channel._id,
             owner: user._id
         })
 
-        data = await Entities.channelMessage.model.findOne({ _id: data._id })
+        channel.readBy = [ user._id ]
+        channel.lastMessage = message._id
+        await channel.save()
 
-        req.app.locals.io.emit('new-message', data)
+        data.message = await Entities.channelMessage.model.findOne({ _id: message._id })
+
+        data.channel = { ...channel._doc, lastMessage: data.message }
+
+        if (data.channel) req.app.locals.io.emit('new-channel', data.channel)
+        if (data.message) req.app.locals.io.emit('new-message', data.message)
     } catch (e) {
         console.error(e)
         errors.push(e.message)

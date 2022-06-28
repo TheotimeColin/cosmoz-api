@@ -1,4 +1,4 @@
-const { status } = require('../api/entities/index')
+const { status } = require('../entities/index')
 
  async function up () {
   try {

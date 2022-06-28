@@ -1,4 +1,4 @@
-const { gathering, constellation } = require('../api/entities/index')
+const { gathering, constellation } = require('../entities/index')
 
  async function up () {
   try {

@@ -107,6 +107,14 @@ mongoose.connection.once('open', async () => {
         socket.on('send-message', function (message) {
             socket.broadcast.emit('new-message', message)
         })
+
+        socket.on('channel-writing', function () {
+            socket.broadcast.emit('channel-writing')
+        })
+
+        socket.on('channel-writing-stop', function () {
+            socket.broadcast.emit('channel-writing-stop')
+        })
     })
 
     app.get('/entities/get', getEntities)

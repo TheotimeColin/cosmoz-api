@@ -9,16 +9,22 @@ let Channel = {
             { type: mongoose.Schema.Types.ObjectId, ref: 'user' }
         ],
 
+        readBy: [
+            { type: mongoose.Schema.Types.ObjectId, ref: 'user' }
+        ],
+
+        lastMessage: { type: mongoose.Schema.Types.ObjectId, write: 'private', read: 'user', ref: 'channelMessage' },
+
         owner: { type: mongoose.Schema.Types.ObjectId, write: 'private', read: 'user', ref: 'user' }
     }, { timestamps: true })
 }
 
 Channel.fields.pre('findOne', function () {
-
+    this.populate('lastMessage')
 })
 
 Channel.fields.pre('find', function () {
-
+    this.populate('lastMessage')
 })
 
 Channel.fields.pre('remove', async function (next) {

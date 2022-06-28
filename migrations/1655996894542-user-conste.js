@@ -1,4 +1,4 @@
-const { user, constellation } = require('../api/entities/index')
+const { user, constellation } = require('../entities/index')
 
  async function up () {
   try {

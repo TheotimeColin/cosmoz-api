@@ -104,6 +104,8 @@ exports.createEntity = async function (req, res) {
             if (duplicate && (!result || !duplicate._id.equals(result._id))) throw Error('duplicateFound')
         }
 
+        console.log(fields)
+
         if (result) {
             data = await Entity.model.findOneAndUpdate({ _id: req.body._id }, fields.query)
         } else {

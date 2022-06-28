@@ -55,6 +55,10 @@ let User = {
             { type: mongoose.Schema.Types.ObjectId, write: 'editor', read: 'self', ref: 'constellation' }
         ],
 
+        channels: [
+            { type: mongoose.Schema.Types.ObjectId, write: 'private', read: 'self', ref: 'channel' }
+        ],
+
         isFriend: { type: Boolean, default: false, write: 'private', read: 'public', replace: { friends: '$requester' } },
 
         tidbits: { type: Array, default: [], write: 'self', read: '$readEach' },

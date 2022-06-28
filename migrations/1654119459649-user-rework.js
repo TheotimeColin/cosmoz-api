@@ -1,4 +1,4 @@
-const { user } = require('../api/entities/index')
+const { user } = require('../entities/index')
 
  async function up () {
   try {

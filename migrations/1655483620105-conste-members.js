@@ -1,4 +1,4 @@
-const { constellation } = require('../api/entities/index')
+const { constellation } = require('../entities/index')
 const mongoose = require('mongoose')
 /**
  * Make any changes you need to make to the database here
