@@ -15,6 +15,7 @@ let Gathering = {
         date: { type: Date, write: 'g-organizer' },
         link: { type: String, write: 'g-organizer' },
         linkRegister: { type: Boolean, default: false, write: 'g-organizer' },
+        visibility: { type: String, default: 'group', write: 'g-organizer' },
 
         description: { type: String, write: 'g-organizer' },
         important: { type: String, write: 'g-organizer' },

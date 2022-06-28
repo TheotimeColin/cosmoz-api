@@ -165,22 +165,6 @@ const typeGetters = {
     gathering: async (data, user) => {
         return new Promise(async (resolve, reject) => {
             try {
-                data = await Promise.all(data.map(async g => {
-                    let users = await Entities.user.model.find({ _id: g.users.map(u => u._id) })
-
-                    return {
-                        ...g,
-                        users: await Promise.all(g.users.map(async dUser => {
-                            let found = users.find(u => u._id.equals(dUser._id))
-                            let data = await fieldsCheck('read', found._doc, Entities.user, found, user)
-
-                            return {
-                                ...data, status: dUser.status
-                            }
-                        }))
-                    }
-                }))
-
                 resolve(data)
             } catch (e) {
                 reject (e)
@@ -278,6 +262,10 @@ const typeSetters = {
         return new Promise(async (resolve, reject) => {
             if (!doc || !doc.id) params.id = shortid.generate()
 
+            params.organizers.forEach(orga => {
+                if (!(doc ? doc.users : []).find(u => u._id.equals(orga))) params.users = [ ...(doc ? doc.users : []), { _id: mongoose.Types.ObjectId(orga), status: 'attending' } ]
+            })
+            
             resolve(params)
         })
     },
