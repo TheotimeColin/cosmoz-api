@@ -146,16 +146,31 @@ exports.reactStatus = async function (req, res) {
         let user = await authenticate(req.headers)
         if (!user) throw Error('no-user')
 
-        let reaction = {
-            type: req.body.type,
-            owner: user._id
-        }
-
-        let status = await Entities.status.model.findByIdAndUpdate(fields._id, {
-            [req.body.action ? '$addToSet' : '$pull']: { reactions: reaction }
+        let status = await Entities.status.model.findOne({
+            _id: fields._id
         })
 
-        if (!status) throw Error('status-not-found')
+        if (!status) throw Error('no-status')
+        
+        if (req.body.action) {
+            let reaction = await Entities.reactions.model.create({
+                type: req.body.type,
+                owner: user._id,
+                status: status._id
+            })
+
+            status.reactions = [ ...status.reactions, reaction._id ]
+        } else {
+            let reaction = await Entities.reactions.model.findOne({
+                type: req.body.type,
+                owner: user._id,
+                status: status._id
+            })
+            
+            status.reactions = status.reactions.filter(r => !r._id.equals(reaction._id))
+
+            await reaction.remove()
+        }
 
         let updated = await Entities.status.model.find({ _id: { $in: [fields._id, status.parent, status.origin] } })
         
