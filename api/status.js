@@ -151,9 +151,9 @@ exports.reactStatus = async function (req, res) {
         })
 
         if (!status) throw Error('no-status')
-        
+
         if (req.body.action) {
-            let reaction = await Entities.reactions.model.create({
+            let reaction = await Entities.reaction.model.create({
                 type: req.body.type,
                 owner: user._id,
                 status: status._id
@@ -161,7 +161,7 @@ exports.reactStatus = async function (req, res) {
 
             status.reactions = [ ...status.reactions, reaction._id ]
         } else {
-            let reaction = await Entities.reactions.model.findOne({
+            let reaction = await Entities.reaction.model.findOne({
                 type: req.body.type,
                 owner: user._id,
                 status: status._id
