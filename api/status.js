@@ -172,6 +172,8 @@ exports.reactStatus = async function (req, res) {
             await reaction.remove()
         }
 
+        await status.save()
+
         let updated = await Entities.status.model.find({ _id: { $in: [fields._id, status.parent, status.origin] } })
         
         data = updated.find(d => d._id.equals(fields._id))
