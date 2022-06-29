@@ -10,11 +10,11 @@ let Status = {
 
         content: { type: String, write: 'user', read: '$status' },
         
-        // reactions: { type: Array, default: [], write: 'user', read: '$status' },
+        reactions: { type: Array, default: [], write: 'user', read: '$status' },
 
-        reactions: [
-            { type: mongoose.Schema.Types.ObjectId, write: 'private', read: '$status', ref: 'reaction' }
-        ],
+        // reactions: [
+        //     { type: mongoose.Schema.Types.ObjectId, write: 'private', read: '$status', ref: 'reaction' }
+        // ],
         
         images: [
             { type: mongoose.Schema.Types.ObjectId, write: 'private', read: '$status', ref: 'mediaCollection' }
@@ -37,13 +37,13 @@ let Status = {
 }
 
 Status.fields.pre('findOne', function () {
-    this.populate('reactions')
+    // this.populate('reactions')
     this.populate('children')
     this.populate('images')
 })
 
 Status.fields.pre('find', function () {
-    this.populate('reactions')
+    // this.populate('reactions')
     this.populate('children')
     this.populate('images')
 })
