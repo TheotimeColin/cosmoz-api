@@ -216,22 +216,26 @@ const fieldsCheck = function (type = 'write', data = {}, entity, requested = nul
                     } else if (requiredRole == '$status') {
                         let origin = requested
 
-                        if (requested.origin) {
-                            origin = await Entities.status.model.findOne({ _id: requested.origin })
-                        }
-
-                        isFriend = user['friends'].find(u => u._id.equals(origin.owner))
-
-                        if (origin.gathering) {
-                            granted = user ? true : false
-                        } else if (origin.constellation) {
-                            let conste = await Entities.constellation.model.findOne({ _id: origin.constellation })
-
-                            if (!conste) granted = false
-
-                            granted = [...conste.members, ...conste.admins, ...conste.organizers].find(u => user._id.equals(u)) ? true : false
+                        if (!user) {
+                            granted = false
                         } else {
-                            if (isFriend || isSelf) granted = true
+                            if (requested.origin) {
+                                origin = await Entities.status.model.findOne({ _id: requested.origin })
+                            }
+
+                            isFriend = user['friends'].find(u => u._id.equals(origin.owner))
+
+                            if (origin.gathering) {
+                                granted = user ? true : false
+                            } else if (origin.constellation) {
+                                let conste = await Entities.constellation.model.findOne({ _id: origin.constellation })
+
+                                if (!conste) granted = false
+
+                                granted = [...conste.members, ...conste.admins, ...conste.organizers].find(u => user._id.equals(u)) ? true : false
+                            } else {
+                                if (isFriend || isSelf) granted = true
+                            }
                         }
                     } else {
                         granted = (user ? ROLES[user.role] : 0) >= ROLES[requiredRole]

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const mediaCollection = require('./media-collection')
+const reaction = require('./reaction')
 
 let Status = {
     write: 'user',
@@ -8,7 +9,12 @@ let Status = {
         read: { type: String, default: 'friends', write: 'self' },
 
         content: { type: String, write: 'user', read: '$status' },
+        
         reactions: { type: Array, default: [], write: 'user', read: '$status' },
+
+        // reactions: [
+        //     { type: mongoose.Schema.Types.ObjectId, write: 'private', read: '$status', ref: 'reaction' }
+        // ],
         
         images: [
             { type: mongoose.Schema.Types.ObjectId, write: 'private', read: '$status', ref: 'mediaCollection' }
@@ -26,16 +32,18 @@ let Status = {
 
         parent: { type: mongoose.Schema.Types.ObjectId, write: 'private', ref: 'status' },
 
-        owner: { type: mongoose.Schema.Types.ObjectId, write: 'private', read: 'user', ref: 'user' }
+        owner: { type: mongoose.Schema.Types.ObjectId, write: 'private', read: 'public', ref: 'user' }
     }, { timestamps: true })
 }
 
 Status.fields.pre('findOne', function () {
+    // this.populate('reactions')
     this.populate('children')
     this.populate('images')
 })
 
 Status.fields.pre('find', function () {
+    // this.populate('reactions')
     this.populate('children')
     this.populate('images')
 })
@@ -49,12 +57,20 @@ Status.fields.pre('remove', async function (next) {
         }))
     }
 
-    await Status.model.deleteMany({
+    await reaction.model.deleteMany({
+        status: this._id
+    })
+
+    let children = await Status.model.find({
         $or: [
             { parent: this._id },
             { origin: this._id }
         ]
     })
+
+    await Promise.all(children.map(async c => {
+        return await c.remove()
+    }))
 
     next()
 })
