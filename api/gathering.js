@@ -8,11 +8,12 @@ moment.tz.setDefault('Europe/Paris')
 const { uploadQR } = require('../utils/files')
 
 exports.updateBookingStatus = async function (req, res) {
-    let data = null
+    let data = {}
     let errors = []
 
     try {
         let user = await authenticate(req.headers)
+        let constellation = null
         let gathering = await Entities.gathering.model.findOne({ _id: req.body._id })
                 
         if (!user) throw Error('no-user')
@@ -23,7 +24,6 @@ exports.updateBookingStatus = async function (req, res) {
                 let status = userUpdate.status
                 let add = userUpdate.add
                 userUpdate = await Entities.user.model.findById(userUpdate._id)
-                
 
                 if (user.role !== 'admin' && user.role !== 'editor') {
                     if (!user._id.equals(userUpdate._id)) {
@@ -55,16 +55,25 @@ exports.updateBookingStatus = async function (req, res) {
                     }
 
                     if (add && !userUpdate.constellations.find(c => c.equals(gathering.constellation))) {
-                        await Entities.constellation.model.updateOne({ _id: gathering.constellation }, {
-                            $addToSet: { members: userUpdate._id },
-                            $pull: { followers: userUpdate._id }
-                        })
-                
-                        userUpdate.constellations = [
-                            ...userUpdate.constellations, gathering.constellation
+                        constellation = await Entities.constellation.model.findOne({ _id: gathering.constellation })
+
+                        constellation.members = [
+                            ...constellation.members,
+                            userUpdate._id
                         ]
 
-                        userUpdate.followedConstellations = userUpdate.followedConstellations.filter(c => !c.equals(gathering.constellation))
+                        constellation.followers = constellation.followers.filter(f => !f.equals(userUpdate._id))
+                
+                        userUpdate.constellations = [
+                            ...userUpdate.constellations,
+                            constellation._id
+                        ]
+
+                        userUpdate.followedConstellations = userUpdate.followedConstellations.filter(c => !c.equals(constellation._id))
+
+                        await constellation.save()
+
+                        data.constellation = constellation
                     }
                 }
 
@@ -100,19 +109,7 @@ exports.updateBookingStatus = async function (req, res) {
         
         await gathering.save()
 
-        data = await Entities.gathering.model.findOne({ _id: gathering._id })
-
-        let users = await Entities.user.model.find({ _id: data.users.map(u => u._id) })
-        
-        data.users = await Promise.all(data.users.map(async dUser => {
-            let found = users.find(u => u._id.equals(dUser._id))
-            let data = await fieldsCheck('read', found._doc, Entities.user, found, user)
-
-            return {
-                ...data,
-                status: dUser.status
-            }
-        }))
+        data.gathering = await Entities.gathering.model.findOne({ _id: gathering._id })
     } catch (e) {
         console.error(e)
         errors.push(e.message)
