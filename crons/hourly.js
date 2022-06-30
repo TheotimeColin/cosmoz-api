@@ -1,120 +1,151 @@
 var CronJob = require('cron').CronJob
+const mongoose = require('mongoose')
 const moment = require('moment-timezone')
 moment.tz.setDefault('Europe/Paris')
 
-const { sendBulkMail, sendMail } = require('../utils/mailing')
+const { createMail, sendBulkMail, sendMail } = require('../utils/mailing')
 const Entities = require('../entities')
 
-module.exports = function (app) {
+module.exports = async function (app) {
     if (app.locals.hourly) return
 
-    // app.locals.hourly = new CronJob('* 30 * * * *', () => {
-    //     sendPendingEmails()
-    //     sendGatheringReminders()
-    // }, null, true)
+    await checkGatherings()
+    await sendPendingEmails()
+
+    app.locals.hourly = new CronJob('* 30 * * * *', async () => {
+        console.log('CRON')
+
+        await checkGatherings()
+        await sendPendingEmails()
+    }, null, true)
 }
 
 const TEMPLATES = {
-    EVENT_CONFIRM: 4
+    EVENT_REMINDER: 3,
+    EVENT_END: 4
 }
 
-const sendPendingEmails = async function () {
-    const mails = await Entities['mail'].model.find({
-        status: { $in: ['pending', 'failed' ] },
-        date: {
-            $lte: new Date()
-        }
-    })
-
-    await Promise.all(mails.map(async mail => {
+const sendPendingEmails = function () {
+    return new Promise(async resolve => {
         try {
-            let params = {
-                ...mail.params
-            }
-
-            if (mail.gathering) {
-                let cover = mail.gathering.cover ? mail.gathering.cover.medias.find(m => m.size == 'm') : ''
-
-                const constellation = await Entities.constellation.model.findOne({ _id: mail.gathering.constellation })
-
-                params = {
-                    ...params,
-                    G_date: moment(mail.gathering.date).format('D MMMM YYYY à HH:mm'),
-                    G_location: mail.gathering.location,
-                    G_title: mail.gathering.title,
-                    G_cover: cover ? cover.src : '',
-                    G_link: process.env.BASE_URL + '/c/' + constellation.slug + '/events/' + mail.gathering.id
+            const mails = await Entities.mail.model.find({
+                status: { $in: ['pending', 'failed' ] },
+                date: {
+                    $lte: new Date()
                 }
-            }
-
-            if (mail.user) {
-                params = {
-                    ...params,
-                    U_name: mail.user.name
-                }
-            }
-
-            const response = await sendMail(mail.user, {
-                template: TEMPLATES[mail.type],
-                params: params,
-                attachment: mail.attachment && mail.attachment.length > 0 ? mail.attachment : null
+            }).populate('user').populate({ path : 'gathering', populate : { path : 'cover' } })
+            
+            const constellations = await Entities.constellation.model.find({
+                _id: { $in: mails.reduce((all, m) => [ ...all, ...(m.gathering ? [m.gathering.constellation] : [])], []) }
             })
 
-            if (response) mail.status = 'sent'
+            let toSend = mails.reduce((all, mail) => {
+                let params = {
+                    ...mail.params
+                }
+
+                let userParams = {}
+
+                if (mail.gathering) {
+                    let cover = mail.gathering.cover ? mail.gathering.cover.medias.find(m => m.size == 'm') : ''
+
+                    params = {
+                        ...params,
+                        G_date: moment(mail.gathering.date).format('D MMMM YYYY à HH:mm'),
+                        G_location: mail.gathering.location,
+                        G_address: mail.gathering.address,
+                        G_title: mail.gathering.title,
+                        G_cover: cover ? cover.src : '',
+                        G_link: process.env.BASE_URL + '/c/' + constellations.find(c => c._id.equals(mail.gathering.constellation)).slug + '/events/' + mail.gathering.id
+                    }
+                }
+
+                if (mail.user) {
+                    userParams = {
+                        ...userParams,
+                        U_name: mail.user.name
+                    }
+                }
+                
+                let id = TEMPLATES[mail.type]
+
+                return {
+                    ...all,
+                    [id]: {
+                        params,
+                        mails: [ ...(all[id] ? all[id].mails : []), mail._id ],
+                        targets: [ ...(all[id] ? all[id].targets : []), {
+                            to: [ { email: mail.user.email } ], params: userParams
+                        } ]
+                    }
+                }
+            }, {})
+            
+            await Promise.all(Object.entries(toSend).map(async t => {
+                try {
+                    const response = await sendBulkMail(t[1].targets, {
+                        template: parseInt(t[0]),
+                        params: t[1].params
+                    })
+
+                    await Entities.mail.model.updateMany({
+                        _id: { $in: t[1].mails }
+                    }, { status: response ? 'success' : 'failed' })
+                } catch (e) {
+                    console.error(e)
+                }
+                
+                return t
+            }))
         } catch (e) {
             console.error(e)
-            mail.status = 'failed'
         }
 
-        return await mail.save()
-    }))
+        resolve(true)
+    })
 }
 
-const sendGatheringReminders = async function () {
-    const gatherings = await Entities['gathering'].model.find({
-        reminded: false,
-        status: 'active',
-        date: {
-            $lte: moment().add(2, 'days').toDate()
-        }
-    })
-
-    await Promise.all(gatherings.map(async gathering => {
-        let users = gathering.users.filter(u => u.status == 'attending').map(u => u._id)
-        
-        users = await Entities.user.model.find({ _id: { $in: users }})
-
-        users = users.map(user => {
-            let qr = `https://${process.env.S3_BUCKET}.s3.eu-west-3.amazonaws.com/gatherings/${gathering.id}/${user.id}.png`
-
-            return {
-                to: [ { email: user.email } ],
-                params: { qr }
-            }
+const checkGatherings = function () {
+    return new Promise(async resolve => {
+        const gatherings = await Entities.gathering.model.find({
+            status: 'active',
+            date: { $gte: moment().subtract(2, 'days').toDate() }
         })
-        
-        try {
-            let cover = gathering.cover ? gathering.cover.medias.find(m => m.size == 'm') : ''
 
-            const constellation = await Entities.constellation.model.findOne({ _id: gathering.constellation })
+        const users = gatherings.reduce((t, g) => [ ...t, ...g.users], []).filter(u => u.status == 'attending' || u.status == 'confirmed').map(u => mongoose.Types.ObjectId(u._id))
 
-            const response = await sendBulkMail(users, {
-                template: 3,
-                params: {
-                    date: moment(gathering.date).format('D MMMM YYYY à HH:mm'),
-                    location: gathering.location,
-                    name: gathering.title,
-                    image: cover ? cover.src : '',
-                    link: process.env.BASE_URL + '/c/' + constellation.slug + '/events/' + gathering.id,
-                    cancel: process.env.BASE_URL + '/c' + constellation.slug + '/events/' + gathering.id + '?manage'
+        await Promise.all(gatherings.map(async gathering => {
+            try {
+                let gUsers = [ ...new Set(users.filter(u => gathering.users.find(g => u.equals(g._id))).map(g => g.toString())) ]
+
+                if (moment(gathering.date).subtract(2, 'days').isBefore(moment())) {
+                    await Promise.all(gUsers.map(async gUser => {
+                        return await createMail({
+                            type: 'EVENT_REMINDER',
+                            date: moment(),
+                            gathering: gathering._id,
+                            user: gUser
+                        })
+                    }))
                 }
-            })
 
-            if (response) gathering.reminded = true
-        } catch (e) {
-            console.error(e)
-        }
+                if (moment(gathering.date).add(2, 'hours').isBefore(moment())) {
+                    await Promise.all(gUsers.map(async gUser => {
+                        return await createMail({
+                            type: 'EVENT_END',
+                            date: moment(),
+                            gathering: gathering._id,
+                            user: gUser
+                        })
+                    }))
+                }
+            } catch (e) {
+                console.error(e)
+            }
 
-        return await gathering.save()
-    }))
+            return true
+        }))
+
+        resolve(true)
+    })
 }

@@ -15,16 +15,6 @@ let Mail = {
     }, { timestamps: true })
 }
 
-Mail.fields.pre('find', function () {
-    this.populate('user')
-    this.populate({
-        path : 'gathering',
-        populate : {
-            path : 'cover'
-        }
-    })
-})
-
 Mail.model = global.Mail ? global.Mail.model : mongoose.model('mail', Mail.fields)
 global.Mail = Mail
 
