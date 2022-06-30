@@ -32,6 +32,7 @@ const { notificationRead } = require('./api/notification')
 const { consteCreate, consteApply, consteLeave, consteEnter, consteInviteLink, consteInviteLinkDelete } = require('./api/constellation')
 const { getToken } = require('./api/token')
 const { createChannel, postMessage } = require('./api/messages')
+const { createReaction, deleteReaction } = require('./api/reaction')
 
 const allowedOrigins = [
     'capacitor://localhost',
@@ -150,6 +151,9 @@ mongoose.connection.once('open', async () => {
     app.get('/status/feed', getFeed)
     app.post('/status/post', upload.array('images', 4), postStatus)
     app.post('/status/react', reactStatus)
+    
+    app.post('/reaction/create', createReaction)
+    app.delete('/reaction', deleteReaction)
 
     app.post('/affinities/send-mentions', sendMentions)
     app.post('/affinities/remove-match', unmatch)

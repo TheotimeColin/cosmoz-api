@@ -21,24 +21,27 @@ exports.createMail = function (params) {
 
             let mail = await Entities.mail.model.findOne(search)
             
-            if (mail) throw Error(mail.status == 'sent' ? 'mail-already-sent' : 'mail-already-queued')
+            if (mail) {
+                resolve(true)
+                // throw Error(mail.status == 'sent' ? 'mail-already-sent' : 'mail-already-queued')
+            } else {
+                let query = {
+                    type: params.type
+                }
 
-            let query = {
-                type: params.type
+                if (params.gathering) query.gathering = params.gathering
+                if (params.user) query.user = params.user
+                if (params.attachment) query.attachment = params.attachment
+                if (params.params) query.params = params.params
+                if (params.date) query.date = params.date.toDate()
+
+                mail = await Entities.mail.model.create({
+                    ...query,
+                    status: 'pending'
+                })
+
+                resolve(true)
             }
-
-            if (params.gathering) query.gathering = params.gathering
-            if (params.user) query.user = params.user
-            if (params.attachment) query.attachment = params.attachment
-            if (params.params) query.params = params.params
-            if (params.date) query.date = params.date.toDate()
-
-            mail = await Entities.mail.model.create({
-                ...query,
-                status: 'pending'
-            })
-
-            resolve(true)
         } catch (e) {
             console.error(e)
             reject(e)
@@ -67,14 +70,14 @@ exports.sendMail = function (user, params) {
     })
 }
 
-exports.sendBulkMail = function (messages, params) {
+exports.sendBulkMail = function (messages, params = {}) {
     return new Promise(async (resolve, reject) => {
         try {
             const EmailsApi = new SendinBlue.TransactionalEmailsApi()
             let email = new SendinBlue.SendSmtpEmail()
 
-            email.templateId = params.template
-            email.params = params.params
+            if (params.template) email.templateId = params.template
+            if (params.params) email.params = params.params
             if (params.attachment) email.attachment = params.attachment
 
             email.messageVersions = messages
@@ -83,7 +86,6 @@ exports.sendBulkMail = function (messages, params) {
 
             resolve(true)
         } catch (e) {
-            console.error(e)
             reject(e)
         }
     })

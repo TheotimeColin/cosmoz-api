@@ -448,6 +448,8 @@ const parseQuery = function (query, user) {
                     parsedQuery[key] = { '$in': entries[1] }
                 } else if (entries[0] == '$broad') {
                     parsedQuery[key] = new RegExp(`^${entries[1]}$`, 'i')
+                } else if (entries[0] == '$includes') {
+                    parsedQuery[key] = new RegExp(entries[1], 'i')
                 }
             }
         }
