@@ -21,7 +21,7 @@ exports.consteCreate = async function (req, res) {
         let user = await authenticate(req.headers)
         if (!user) throw Error('no-user')
 
-        if (user.createdConstellations.length >= 5 && !user.role.admin) throw Error('too-many-constellations')
+        if (user.createdConstellations.length >= 10 && user.role != 'admin') throw Error('too-many-constellations')
 
         const constellations = await Entities.constellation.model.find()
 
