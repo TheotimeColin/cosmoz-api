@@ -18,6 +18,8 @@ let Status = {
             { type: mongoose.Schema.Types.ObjectId, write: 'private', read: '$status', ref: 'mediaCollection' }
         ],
 
+        tags: { type: Array, default: [] },
+
         children: [
             { type: mongoose.Schema.Types.ObjectId, write: 'private', read: '$status', ref: 'status' }
         ],

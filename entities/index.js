@@ -14,6 +14,7 @@ const mention = require('./mention')
 const mail = require('./mail')
 const channelMessage = require('./channel-message')
 const channel = require('./channel')
+const tag = require('./tag')
 
 mongoose.connect(process.env.MONGO, { useNewUrlParser: true, useUnifiedTopology: true })
 
@@ -31,3 +32,4 @@ exports.mention = mention
 exports.mail = mail
 exports.channelMessage = channelMessage
 exports.channel = channel
+exports.tag = tag

@@ -41,18 +41,18 @@ exports.updateBookingStatus = async function (req, res) {
                 }
 
                 if (status == 'confirmed') {
-                    try {
-                        let added = await createMail({
-                            type: 'EVENT_CONFIRM',
-                            date: moment().add(5, 'minutes'),
-                            gathering: gathering._id,
-                            user: userUpdate._id
-                        })
+                    // try {
+                    //     let added = await createMail({
+                    //         type: 'EVENT_CONFIRM',
+                    //         date: moment().add(5, 'minutes'),
+                    //         gathering: gathering._id,
+                    //         user: userUpdate._id
+                    //     })
                         
-                        if (!added) throw Error('failed-queue-email')
-                    } catch (e) {
-                        console.error(e)
-                    }
+                    //     if (!added) throw Error('failed-queue-email')
+                    // } catch (e) {
+                    //     console.error(e)
+                    // }
 
                     if (add && !userUpdate.constellations.find(c => c.equals(gathering.constellation))) {
                         constellation = await Entities.constellation.model.findOne({ _id: gathering.constellation })

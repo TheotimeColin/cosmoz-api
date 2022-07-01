@@ -78,6 +78,33 @@ exports.postStatus = async function (req, res) {
             }
         }
 
+        if (fields.tags && constellation) {
+            if (!Array.isArray(fields.tags)) fields.tags = [fields.tags]
+
+            let existingTags = await Entities.tag.model.find({
+                id: { $in: fields.tags.map(t => t.toLowerCase()) }, constellation: constellation._id
+            })
+
+            fields.tags = await Promise.all(fields.tags.map(async tag => {
+                let dbTag = existingTags.find(t => t.id.toLowerCase() == tag.toLowerCase())
+
+                if (dbTag) {
+                    dbTag.count += 1
+                    await dbTag.save()
+                } else {
+                    dbTag = await Entities.tag.model.create({
+                        id: tag.toLowerCase().slice(0, 30),
+                        count: 1,
+                        constellation: constellation._id
+                    })
+                }
+
+                return tag
+            }))
+        } else {
+            fields.tags = []
+        }
+
         fields.content = striptags(fields.content)
         fields.content = fields.content.replace(/\n/g, '<br>')
 
