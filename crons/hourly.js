@@ -9,6 +9,7 @@ const Entities = require('../entities')
 module.exports = async function (app) {
     if (app.locals.hourly) return
 
+    await sendNotifications()
     await checkGatherings()
     await sendPendingEmails()
 
@@ -22,7 +23,8 @@ module.exports = async function (app) {
 
 const TEMPLATES = {
     EVENT_REMINDER: 3,
-    EVENT_END: 4
+    EVENT_END: 4,
+    NOTIF_WEEKLY: 6
 }
 
 const sendPendingEmails = function () {
@@ -70,7 +72,6 @@ const sendPendingEmails = function () {
                         U_name: mail.user.name
                     }
                 }
-                
 
                 return {
                     ...all,
@@ -103,6 +104,104 @@ const sendPendingEmails = function () {
         } catch (e) {
             console.error(e)
         }
+
+        resolve(true)
+    })
+}
+
+const sendNotifications = function () {
+    return new Promise(async resolve => {
+        let users = await Entities.user.model.find({
+            email: { $in: [
+                // 'colin.theotime@gmail.com',
+                'theotime.colin@hotmail.fr'
+            ] }
+        })
+
+        await Promise.all(users.map(async user => {
+            let mainNotifications = []
+
+            let notifications = await Entities.notification.model.find({
+                // state: 'unread',
+                owner: user._id
+            })
+
+            let conversations = await Entities.channel.model.find({
+                readBy: { "$ne": user._id },
+                users: user._id
+            })
+
+            if (conversations.length > 0) {
+                mainNotifications = [
+                    ...mainNotifications,
+                    { text: `📩 Tu as reçu ${conversations.length} message(s) privés.` }
+                ]
+            }
+
+            if (notifications.filter(n => n.type == 'friends-new').length > 0) {
+                mainNotifications = [
+                    ...mainNotifications,
+                    { text: `✨ ${notifications.filter(n => n.type == 'friends-new').length} personne(s) ont accepté ta demande d'amis !` }
+                ]
+            }
+
+            if (notifications.filter(n => n.type == 'conste-enter').length > 0) {
+                mainNotifications = [
+                    ...mainNotifications,
+                    { text: `👋 Ta demande a été acceptée dans ${notifications.filter(n => n.type == 'conste-enter').length} constellation(s) !` }
+                ]
+            }
+
+            if (notifications.filter(n => n.type == 'post-reply').length > 0) {
+                mainNotifications = [
+                    ...mainNotifications,
+                    { text: `👀 ${notifications.filter(n => n.type == 'post-reply').length} personnes t'ont répondu.` }
+                ]
+            }
+
+            let gatherings = await Entities.gathering.model.find({
+                constellation: { $in: user.constellations },
+                status: 'active'
+            }).sort('-date')
+
+            let constellations = await Entities.constellation.model.find({
+                _id: { $in: user.constellations }
+            })
+
+            gatherings = gatherings.map(g => {
+                let cover = g.cover ? g.cover.medias.find(m => m.size == 's') : ''
+
+                return {
+                    title: g.title,
+                    date: moment(g.date).format('D MMMM YYYY'),
+                    cover: cover ? cover.src : '',
+                    link: process.env.BASE_URL + '/c/' + constellations.find(c => c._id.equals(g.constellation)).slug + '/events/' + g.id,
+                    constellation: constellations.find(c => c._id.equals(g.constellation)).name
+                }
+            })
+
+            if (notifications.filter(n => n.type == 'post-react').length > 0) {
+                mainNotifications = [
+                    ...mainNotifications,
+                    { text: `😱 ${notifications.filter(n => n.type == 'post-react').length} personnes ont réagi à tes publications.` }
+                ]
+            }
+
+            console.log(gatherings)
+            
+            return await createMail({
+                id: Math.random(),
+                type: 'NOTIF_WEEKLY',
+                date: moment(),
+                params: {
+                    hasFeatured: mainNotifications.length > 0,
+                    notifications: mainNotifications,
+                    hasEvents: gatherings.length > 0,
+                    events: gatherings
+                },
+                user: user
+            })
+        }))
 
         resolve(true)
     })

@@ -19,7 +19,7 @@ exports.createMail = function (params) {
             if (params.user) search.$and.push({ user: params.user })
             if (params.gathering) search.$and.push({ gathering: params.gathering })
 
-            let mail = await Entities.mail.model.findOne(search)
+            let mail = await Entities.mail.model.findOne(params.id ? { id: params.id } : search)
             
             if (mail) {
                 resolve(true)

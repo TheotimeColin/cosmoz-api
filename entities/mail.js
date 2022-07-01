@@ -4,6 +4,7 @@ let Mail = {
     write: 'private',
     read: 'admin',
     fields: new mongoose.Schema({
+        id: { type: String },
         type: { type: String },
         date: { type: Date },
         params: { type: Object, default: {} },
