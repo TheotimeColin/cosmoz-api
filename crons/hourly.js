@@ -40,6 +40,10 @@ const sendPendingEmails = function () {
             })
 
             let toSend = mails.reduce((all, mail) => {
+                let id = TEMPLATES[mail.type]
+
+                if (!id) return all
+
                 let params = {
                     ...mail.params
                 }
@@ -67,7 +71,6 @@ const sendPendingEmails = function () {
                     }
                 }
                 
-                let id = TEMPLATES[mail.type]
 
                 return {
                     ...all,
