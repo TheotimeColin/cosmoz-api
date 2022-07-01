@@ -9,7 +9,7 @@ const Entities = require('../entities')
 module.exports = async function (app) {
     if (app.locals.hourly) return
 
-    await sendNotifications()
+    // await sendNotifications()
     await checkGatherings()
     await sendPendingEmails()
 
@@ -186,8 +186,6 @@ const sendNotifications = function () {
                     { text: `😱 ${notifications.filter(n => n.type == 'post-react').length} personnes ont réagi à tes publications.` }
                 ]
             }
-
-            console.log(gatherings)
             
             return await createMail({
                 id: Math.random(),
