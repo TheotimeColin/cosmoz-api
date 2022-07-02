@@ -113,12 +113,7 @@ const sendPendingEmails = function () {
 
 const sendNotifications = function () {
     return new Promise(async resolve => {
-        let users = await Entities.user.model.find({
-            email: { $in: [
-                // 'colin.theotime@gmail.com',
-                'theotime.colin@hotmail.fr'
-            ] }
-        })
+        let users = await Entities.user.model.find()
 
         await Promise.all(users.map(async user => {
             try {
