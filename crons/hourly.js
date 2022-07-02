@@ -18,8 +18,8 @@ module.exports = async function (app) {
     }, null, true)
 
     app.locals.hourly = new CronJob('* * 11 * * Sun', async () => {
-        await sendNotifications()
-        await sendPendingEmails()
+        // await sendNotifications()
+        // await sendPendingEmails()
     }, null, true)
 }
 
@@ -78,10 +78,11 @@ const sendPendingEmails = function () {
                 return {
                     ...all,
                     [id]: {
-                        params,
+                        params: { notEmpty: true },
                         mails: [ ...(all[id] ? all[id].mails : []), mail._id ],
                         targets: [ ...(all[id] ? all[id].targets : []), {
-                            to: [ { email: mail.user.email } ], params: userParams
+                            to: [ { email: mail.user.email } ],
+                            params: { ...userParams, ...params }
                         } ]
                     }
                 }
@@ -144,7 +145,6 @@ const sendNotifications = function () {
                     ...t,
                     [s.constellation]: (t[s.constellation] ? t[s.constellation] : 0) + 1
                 }), {})
-
 
                 if (conversations.length > 0) {
                     mainNotifications = [
@@ -251,7 +251,7 @@ const checkGatherings = function () {
             try {
                 let gUsers = [ ...new Set(users.filter(u => gathering.users.find(g => u.equals(g._id))).map(g => g.toString())) ]
 
-                if (moment(gathering.date).subtract(2, 'days').isBefore(moment())) {
+                if (moment(gathering.date).isAfter(moment()) && moment(gathering.date).subtract(2, 'days').isBefore(moment())) {
                     await Promise.all(gUsers.map(async gUser => {
                         return await createMail({
                             type: 'EVENT_REMINDER',
@@ -262,7 +262,7 @@ const checkGatherings = function () {
                     }))
                 }
 
-                if (moment(gathering.date).add(2, 'hours').isBefore(moment())) {
+                if (moment(gathering.date).add(5, 'hours').isBefore(moment())) {
                     await Promise.all(gUsers.map(async gUser => {
                         return await createMail({
                             type: 'EVENT_END',

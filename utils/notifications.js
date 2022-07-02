@@ -42,9 +42,10 @@ const createNotification = function (params = {}, user = null) {
             query.content = params.content
 
             if (params.action) {
-                if (existing && !existing.origins.find(o => params.originator._id.equals(o._id))) {
+                if (existing && (params.originator.type == 'anonymous' || !existing.origins.find(o => params.originator._id.equals(o._id)))) {
                     existing.origins = [
-                        ...existing.origins, params.originator
+                        ...existing.origins,
+                        params.originator
                     ]
 
                     await existing.save()

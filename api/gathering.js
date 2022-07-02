@@ -4,6 +4,7 @@ const { authenticate, accessCheck, fieldsCheck } = require('../utils/user')
 const { createMail, sendMail } = require('../utils/mailing')
 const moment = require('moment-timezone')
 moment.tz.setDefault('Europe/Paris')
+const { createNotification } = require('../utils/notifications')
 
 const { uploadQR } = require('../utils/files')
 
@@ -35,25 +36,12 @@ exports.updateBookingStatus = async function (req, res) {
                     }
                 }
 
-                if (status == 'attending') {
+                if (status == 'attending' && moment(gathering.date).isAfter(moment())) {
                     let sent = await sendConfirmationMail(gathering, user)
                     if (!sent) console.error('failed-mail')
                 }
 
                 if (status == 'confirmed') {
-                    // try {
-                    //     let added = await createMail({
-                    //         type: 'EVENT_CONFIRM',
-                    //         date: moment().add(5, 'minutes'),
-                    //         gathering: gathering._id,
-                    //         user: userUpdate._id
-                    //     })
-                        
-                    //     if (!added) throw Error('failed-queue-email')
-                    // } catch (e) {
-                    //     console.error(e)
-                    // }
-
                     if (add && !userUpdate.constellations.find(c => c.equals(gathering.constellation))) {
                         constellation = await Entities.constellation.model.findOne({ _id: gathering.constellation })
 
@@ -75,6 +63,15 @@ exports.updateBookingStatus = async function (req, res) {
 
                         data.constellation = constellation
                     }
+
+                    await createNotification({
+                        type: 'gathering-confirmed',
+                        gathering: gathering._id,
+                        originator: {
+                            _id: gathering._id, type: 'gathering'
+                        },
+                        owner: userUpdate._id
+                    }, userUpdate)
                 }
 
                 gathering.users = [
