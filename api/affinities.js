@@ -6,6 +6,7 @@ moment.tz.setDefault('Europe/Paris')
 
 const { authenticate } = require('../utils/user')
 const { requestFriend } = require('../utils/social')
+const { createNotification } = require('../utils/notifications')
 
 exports.sendMentions = async function (req, res) {
     let data = {}
@@ -19,7 +20,7 @@ exports.sendMentions = async function (req, res) {
         if (!gathering) throw Error('gathering-not-found')
         if (!target) throw Error('target-user-not-found')
         
-        if (!gathering.users.find(u => target._id.equals(u._id) && (u.status == 'confirmed' || u.status == 'attending')) || !gathering.users.find(u => user._id.equals(u._id) && (u.status == 'confirmed' || u.status == 'attending'))) throw Error('users-not-connected')
+        if (!gathering.users.find(u => target._id.equals(u._id) && (u.status == 'confirmed' || u.status == 'attending')) || !gathering.users.find(u => user._id.equals(u._id) && (u.status == 'confirmed' || u.status == 'attending'))) throw Error('users-not-connected')        
 
         let mention = await Entities.mention.model.findOne({
             gathering: gathering._id,
@@ -36,6 +37,16 @@ exports.sendMentions = async function (req, res) {
             owner: user._id
         })
 
+        for (let m of req.body.mentions.slice(0, 2)) { 
+            await createNotification({
+                type: 'gathering-mention',
+                gathering: gathering._id,
+                query: ['gathering'],
+                originator: { id: Math.random(), type: 'anonymous' },
+                owner: target._id
+            }, target)
+        }
+    
         if (req.body.requestFriend) data.match = await requestFriend(user, target)
     } catch (e) {
         console.error(e)
