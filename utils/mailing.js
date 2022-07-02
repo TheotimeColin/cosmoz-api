@@ -17,9 +17,12 @@ exports.createMail = function (params) {
             }
     
             if (params.user) search.$and.push({ user: params.user })
-            if (params.gathering) search.$and.push({ gathering: params.gathering })
 
-            let mail = await Entities.mail.model.findOne(params.id ? { id: params.id } : search)
+            if (!params.id) {
+                if (params.gathering) search.$and.push({ gathering: params.gathering })
+            }
+
+            let mail = await Entities.mail.model.findOne(params.id ? {  id: params.id, ...search } : search)
             
             if (mail) {
                 resolve(true)
@@ -33,6 +36,7 @@ exports.createMail = function (params) {
                 if (params.user) query.user = params.user
                 if (params.attachment) query.attachment = params.attachment
                 if (params.params) query.params = params.params
+                if (params.id) query.id = params.id
                 if (params.date) query.date = params.date.toDate()
 
                 mail = await Entities.mail.model.create({

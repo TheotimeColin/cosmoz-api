@@ -9,14 +9,16 @@ const Entities = require('../entities')
 module.exports = async function (app) {
     if (app.locals.hourly) return
 
-    // await sendNotifications()
-    await checkGatherings()
+    await sendNotifications()
     await sendPendingEmails()
 
     app.locals.hourly = new CronJob('* 30 * * * *', async () => {
-        console.log('CRON')
-
         await checkGatherings()
+        await sendPendingEmails()
+    }, null, true)
+
+    app.locals.hourly = new CronJob('* * 11 * * Sun', async () => {
+        await sendNotifications()
         await sendPendingEmails()
     }, null, true)
 }
@@ -119,86 +121,122 @@ const sendNotifications = function () {
         })
 
         await Promise.all(users.map(async user => {
-            let mainNotifications = []
+            try {
+                let mainNotifications = []
+                let consteActivity = []
 
-            let notifications = await Entities.notification.model.find({
-                // state: 'unread',
-                owner: user._id
-            })
+                let notifications = await Entities.notification.model.find({
+                    state: 'unread',
+                    owner: user._id,
+                    createdAt: { $gte: moment().subtract(10, 'days').toDate() }
+                })
 
-            let conversations = await Entities.channel.model.find({
-                readBy: { "$ne": user._id },
-                users: user._id
-            })
+                let conversations = await Entities.channel.model.find({
+                    readBy: { "$ne": user._id },
+                    users: user._id
+                })
 
-            if (conversations.length > 0) {
-                mainNotifications = [
-                    ...mainNotifications,
-                    { text: `📩 Tu as reçu ${conversations.length} message(s) privés.` }
-                ]
-            }
+                let constellations = await Entities.constellation.model.find({
+                    _id: { $in: user.constellations }
+                })
 
-            if (notifications.filter(n => n.type == 'friends-new').length > 0) {
-                mainNotifications = [
-                    ...mainNotifications,
-                    { text: `✨ ${notifications.filter(n => n.type == 'friends-new').length} personne(s) ont accepté ta demande d'amis !` }
-                ]
-            }
+                let statuses = await Entities.status.model.find({
+                    constellation: { $in: user.constellations.map(c => c._id) },
+                    createdAt: { $gte: moment().subtract(7, 'days').toDate() },
+                })
 
-            if (notifications.filter(n => n.type == 'conste-enter').length > 0) {
-                mainNotifications = [
-                    ...mainNotifications,
-                    { text: `👋 Ta demande a été acceptée dans ${notifications.filter(n => n.type == 'conste-enter').length} constellation(s) !` }
-                ]
-            }
+                statuses = statuses.reduce((t, s) => ({
+                    ...t,
+                    [s.constellation]: (t[s.constellation] ? t[s.constellation] : 0) + 1
+                }), {})
 
-            if (notifications.filter(n => n.type == 'post-reply').length > 0) {
-                mainNotifications = [
-                    ...mainNotifications,
-                    { text: `👀 ${notifications.filter(n => n.type == 'post-reply').length} personnes t'ont répondu.` }
-                ]
-            }
 
-            let gatherings = await Entities.gathering.model.find({
-                constellation: { $in: user.constellations },
-                status: 'active'
-            }).sort('-date')
-
-            let constellations = await Entities.constellation.model.find({
-                _id: { $in: user.constellations }
-            })
-
-            gatherings = gatherings.map(g => {
-                let cover = g.cover ? g.cover.medias.find(m => m.size == 's') : ''
-
-                return {
-                    title: g.title,
-                    date: moment(g.date).format('D MMMM YYYY'),
-                    cover: cover ? cover.src : '',
-                    link: process.env.BASE_URL + '/c/' + constellations.find(c => c._id.equals(g.constellation)).slug + '/events/' + g.id,
-                    constellation: constellations.find(c => c._id.equals(g.constellation)).name
+                if (conversations.length > 0) {
+                    mainNotifications = [
+                        ...mainNotifications,
+                        { text: `📩 Tu as reçu ${conversations.length} message(s) privés.` }
+                    ]
                 }
-            })
 
-            if (notifications.filter(n => n.type == 'post-react').length > 0) {
-                mainNotifications = [
-                    ...mainNotifications,
-                    { text: `😱 ${notifications.filter(n => n.type == 'post-react').length} personnes ont réagi à tes publications.` }
-                ]
+                if (Object.entries(statuses).filter(s => s[1] > 1).length > 0) {
+                    Object.entries(statuses).filter(s => s[1] > 1).forEach(status => {
+                        let conste = constellations.find(c => c._id.equals(status[0])) 
+
+                        consteActivity.push({
+                            name: conste.name,
+                            link: process.env.BASE_URL + '/c/' + conste.slug + '/feed',
+                            count: status[1]
+                        })
+                    })
+                }
+
+                if (notifications.filter(n => n.type == 'friends-new').length > 0) {
+                    mainNotifications = [
+                        ...mainNotifications,
+                        { text: `✨ ${notifications.filter(n => n.type == 'friends-new').length} personne(s) ont accepté ta demande d'amis !` }
+                    ]
+                }
+
+                if (notifications.filter(n => n.type == 'conste-enter').length > 0) {
+                    mainNotifications = [
+                        ...mainNotifications,
+                        { text: `👋 Ta demande a été acceptée dans ${notifications.filter(n => n.type == 'conste-enter').length} constellation(s) !` }
+                    ]
+                }
+
+                if (notifications.filter(n => n.type == 'post-reply').length > 0) {
+                    mainNotifications = [
+                        ...mainNotifications,
+                        { text: `👀 ${notifications.filter(n => n.type == 'post-reply').length} personnes t'ont répondu.` }
+                    ]
+                }
+
+                let gatherings = await Entities.gathering.model.find({
+                    constellation: { $in: user.constellations },
+                    date: { $gte: new Date() },
+                    status: 'active'
+                }).sort('-date')
+
+                gatherings = gatherings.map(g => {
+                    let cover = g.cover ? g.cover.medias.find(m => m.size == 's') : ''
+
+                    return {
+                        title: g.title,
+                        date: moment(g.date).format('D MMMM YYYY'),
+                        cover: cover ? cover.src : '',
+                        link: process.env.BASE_URL + '/c/' + constellations.find(c => c._id.equals(g.constellation)).slug + '/events/' + g.id,
+                        constellation: constellations.find(c => c._id.equals(g.constellation)).name
+                    }
+                })
+
+                if (notifications.filter(n => n.type == 'post-react').length > 0) {
+                    mainNotifications = [
+                        ...mainNotifications,
+                        { text: `😱 ${notifications.filter(n => n.type == 'post-react').length} personnes ont réagi à tes publications.` }
+                    ]
+                }
+                
+                if (consteActivity.length > 0 || mainNotifications.length > 0 || gatherings.length > 0) {
+                    await createMail({
+                        id: `weekly-${moment().isoWeek()}-${moment().year()}`,
+                        type: 'NOTIF_WEEKLY',
+                        date: moment(),
+                        params: {
+                            hasConste: consteActivity.length > 0,
+                            constellations: consteActivity,
+                            hasFeatured: mainNotifications.length > 0,
+                            notifications: mainNotifications,
+                            hasEvents: gatherings.length > 0,
+                            events: gatherings
+                        },
+                        user: user
+                    })
+                }
+            } catch (e) {
+
             }
-            
-            return await createMail({
-                id: Math.random(),
-                type: 'NOTIF_WEEKLY',
-                date: moment(),
-                params: {
-                    hasFeatured: mainNotifications.length > 0,
-                    notifications: mainNotifications,
-                    hasEvents: gatherings.length > 0,
-                    events: gatherings
-                },
-                user: user
-            })
+             
+            return true
         }))
 
         resolve(true)
