@@ -9,17 +9,17 @@ const Entities = require('../entities')
 module.exports = async function (app) {
     if (app.locals.hourly) return
 
-    await sendNotifications()
-    await sendPendingEmails()
+    // await sendNotifications()
+    // await sendPendingEmails()
 
     app.locals.hourly = new CronJob('* 30 * * * *', async () => {
         await checkGatherings()
         await sendPendingEmails()
     }, null, true)
 
-    app.locals.hourly = new CronJob('* * 11 * * Sun', async () => {
-        // await sendNotifications()
-        // await sendPendingEmails()
+    app.locals.weekly = new CronJob('* * 11 * * Sun', async () => {
+        await sendNotifications()
+        await sendPendingEmails()
     }, null, true)
 }
 
