@@ -22,6 +22,13 @@ exports.getEntities = async function (req, res) {
         let cancel = false
         let idQuery = req.query._id && typeof req.query._id !== 'object' && !req.query._id.includes('$in')
         let queryType = req.query.type
+        let options = {
+            limit: 1000,
+            skip: 0,
+            ...req.query.options
+        }
+
+        delete req.query.options
 
         console.log(`\n -- QUERY ${queryType} --\n`)
         
@@ -39,7 +46,7 @@ exports.getEntities = async function (req, res) {
             delete query.type
             
             let parsed = parseQuery(query, user)
-            result = cancel ? [] : await Entity.model.find(parsed.query, null, parsed.options)
+            result = cancel ? [] : await Entity.model.find(parsed.query, null, { ...options, ...parsed.options })
         }
 
         if (!result) throw Error('search-not-found')

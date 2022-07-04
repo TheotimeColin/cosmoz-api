@@ -242,7 +242,13 @@ exports.getFeed = async function (req, res) {
         let user = await authenticate(req.headers)
         if (!user) throw Error('no-user')
 
-        data = await Entities.status.model.find({
+        let options = {
+            limit: 10,
+            skip: 0,
+            ...req.body.options
+        }
+
+        let query = {
             $and: [
                 {
                     $or: [
@@ -263,7 +269,9 @@ exports.getFeed = async function (req, res) {
                 },
                 { parent: null }
             ]
-        })
+        }
+
+        data = await Entities.status.model.find(query, null, { sort: { createdAt: 'desc' }, limit: options.limit, skip: options.skip })
     } catch (e) {
         console.error(e)
         errors.push(e.message)
