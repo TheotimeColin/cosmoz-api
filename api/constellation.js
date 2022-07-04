@@ -214,7 +214,7 @@ exports.consteInviteLink = async function (req, res) {
             constellation: constellation._id
         })
 
-        data.token = id
+        data.token = token
     } catch (e) {
         console.error(e)
         errors.push(e.message)

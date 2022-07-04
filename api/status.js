@@ -2,10 +2,12 @@ const Entities = require('../entities')
 const moment = require('moment-timezone')
 moment.tz.setDefault('Europe/Paris')
 const striptags  = require('striptags')
+const linkifyHtml = require('linkify-html');
 
 const { authenticate, accessCheck, fieldsCheck } = require('../utils/user')
 const { createMediaCollection } = require('../utils/files')
 const { createNotification } = require('../utils/notifications')
+const { scrape } = require('../utils/scraper')
 
 exports.postStatus = async function (req, res) {
     let data = {}
@@ -106,7 +108,27 @@ exports.postStatus = async function (req, res) {
         }
 
         fields.content = striptags(fields.content)
+        fields.content = linkifyHtml(fields.content, {
+            target: '_blank',
+            truncate: 42
+        })
         fields.content = fields.content.replace(/\n/g, '<br>')
+        fields.embed = fields.embed ? JSON.parse(fields.embed) : null
+        
+        if (fields.embed?.href) {
+            let embed = await scrape(fields.embed.href)
+
+            if (embed && embed.title) {
+                fields.embed = {
+                    href: fields.embed.href,
+                    title: embed.title,
+                    image: embed.image,
+                    description: embed.description,
+                }
+            } else {
+                delete fields.embed
+            }
+        }
 
         data = await Entities.status.model.create({
             ...fields,
@@ -242,7 +264,13 @@ exports.getFeed = async function (req, res) {
         let user = await authenticate(req.headers)
         if (!user) throw Error('no-user')
 
-        data = await Entities.status.model.find({
+        let options = {
+            limit: 10,
+            skip: 0,
+            ...req.body.options
+        }
+
+        let query = {
             $and: [
                 {
                     $or: [
@@ -254,16 +282,18 @@ exports.getFeed = async function (req, res) {
                         
                         { constellation: { $in: user.constellations } },
 
-                        { $and: [
-                            { owner: { $in: user.friends } },
-                            { constellation: null },
-                            { gathering: null },
-                        ] }
+                        // { $and: [
+                        //     { owner: { $in: user.friends } },
+                        //     { constellation: null },
+                        //     { gathering: null },
+                        // ] }
                     ],
                 },
-                { parent: null }
+                { parent: null },
             ]
-        })
+        }
+
+        data = await Entities.status.model.find(query, null, { sort: { createdAt: 'desc' }, limit: options.limit, skip: options.skip })
     } catch (e) {
         console.error(e)
         errors.push(e.message)

@@ -24,6 +24,8 @@ let Status = {
             { type: mongoose.Schema.Types.ObjectId, write: 'private', read: '$status', ref: 'status' }
         ],
 
+        embed: { type: Object, write: 'user', read: '$status' },
+
         constellation: { type: mongoose.Schema.Types.ObjectId, write: 'private', ref: 'constellation' },
 
         gathering: { type: mongoose.Schema.Types.ObjectId, write: 'private', ref: 'gathering' },

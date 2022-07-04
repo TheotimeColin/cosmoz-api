@@ -1,6 +1,7 @@
 const { authenticate } = require('../utils/user')
 const Entities = require('../entities')
 const striptags  = require('striptags')
+const linkifyHtml = require('linkify-html');
 
 exports.createChannel = async function (req, res) {
     let data = {}
@@ -90,6 +91,10 @@ exports.postMessage = async function (req, res) {
         }
 
         fields.content = striptags(fields.content)
+        fields.content = linkifyHtml(fields.content, {
+            target: '_blank',
+            truncate: 42
+        })
 
         let message = await Entities.channelMessage.model.create({
             ...fields,
