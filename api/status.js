@@ -2,10 +2,12 @@ const Entities = require('../entities')
 const moment = require('moment-timezone')
 moment.tz.setDefault('Europe/Paris')
 const striptags  = require('striptags')
+const linkifyHtml = require('linkify-html');
 
 const { authenticate, accessCheck, fieldsCheck } = require('../utils/user')
 const { createMediaCollection } = require('../utils/files')
 const { createNotification } = require('../utils/notifications')
+const { scrape } = require('../utils/scraper')
 
 exports.postStatus = async function (req, res) {
     let data = {}
@@ -106,7 +108,27 @@ exports.postStatus = async function (req, res) {
         }
 
         fields.content = striptags(fields.content)
+        fields.content = linkifyHtml(fields.content, {
+            target: '_blank',
+            truncate: 42
+        })
         fields.content = fields.content.replace(/\n/g, '<br>')
+        fields.embed = fields.embed ? JSON.parse(fields.embed) : null
+        
+        if (fields.embed?.href) {
+            let embed = await scrape(fields.embed.href)
+
+            if (embed && embed.title) {
+                fields.embed = {
+                    href: fields.embed.href,
+                    title: embed.title,
+                    image: embed.image,
+                    description: embed.description,
+                }
+            } else {
+                delete fields.embed
+            }
+        }
 
         data = await Entities.status.model.create({
             ...fields,
