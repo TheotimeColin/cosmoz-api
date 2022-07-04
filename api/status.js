@@ -282,14 +282,14 @@ exports.getFeed = async function (req, res) {
                         
                         { constellation: { $in: user.constellations } },
 
-                        { $and: [
-                            { owner: { $in: user.friends } },
-                            { constellation: null },
-                            { gathering: null },
-                        ] }
+                        // { $and: [
+                        //     { owner: { $in: user.friends } },
+                        //     { constellation: null },
+                        //     { gathering: null },
+                        // ] }
                     ],
                 },
-                { parent: null }
+                { parent: null },
             ]
         }
 
