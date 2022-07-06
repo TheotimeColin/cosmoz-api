@@ -268,7 +268,7 @@ exports.getFeed = async function (req, res) {
             let statuses = await Entities.status.model.find({
                 constellation: c
             }, null, {
-                limit: 15,
+                limit: 20,
                 sort: { createdAt: 'desc' }
             })
 
@@ -301,8 +301,11 @@ exports.getConstellationFeed = async function (req, res) {
         })
 
         data = await Entities.status.model.find({
-            tags: { $in: featuredTags.map(tag => tag.id) },
-            constellation: req.body._id
+            constellation: req.body._id,
+            $or: [
+                { tags: { $in: featuredTags.map(tag => tag.id) } },
+                { createdAt: { $gte: moment().subtract(3, 'days') } }
+            ]
         })
     } catch (e) {
         console.error(e)
