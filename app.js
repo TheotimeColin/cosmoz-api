@@ -26,7 +26,7 @@ const { createEntity, getEntities, deleteEntity } = require('./api/entity')
 const { logUser, logOut, getUser, requestResetPassword, resetPassword, subscribeNewsletter } = require('./api/user')
 const { updateBookingStatus } = require('./api/gathering');
 const { sendMentions, unmatch, createRequest, cancelRequest } = require('./api/affinities')
-const { getFeed, postStatus, reactStatus } = require('./api/status')
+const { getFeed, postStatus, reactStatus, getConstellationFeed } = require('./api/status')
 const { scrape } = require('./api/scraper')
 const { notificationRead } = require('./api/notification')
 const { consteCreate, consteApply, consteLeave, consteEnter, consteInviteLink, consteInviteLinkDelete } = require('./api/constellation')
@@ -38,6 +38,7 @@ const allowedOrigins = [
     'capacitor://localhost',
     'ionic://localhost',
     'http://localhost',
+    'http://192.168.1.34',
     'http://cosmoz.local',
     'https://cosmoz.social',
     'https://www.cosmoz.social',
@@ -165,6 +166,7 @@ mongoose.connection.once('open', async () => {
     app.post('/constellation/enter', consteEnter)
     app.post('/constellation/create', upload.single('file'), consteCreate)
     app.post('/constellation/invite-link', consteInviteLink)
+    app.post('/constellation/feed', getConstellationFeed)
     app.delete('/constellation/invite-link', consteInviteLinkDelete)
     
     app.post('/token/get', getToken)
