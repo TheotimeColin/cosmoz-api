@@ -62,6 +62,8 @@ exports.getEntities = async function (req, res) {
 
         data = typeGetters[queryType] ? await typeGetters[queryType](result, user) : result
 
+        postGet[queryType] ? await postGet[queryType](data, req.query, user) : {}
+
         if (idQuery) data = data[0]
     } catch (e) {
         console.error(e)
@@ -302,6 +304,31 @@ const typeSetters = {
     },
 }
 
+const postGet = {
+    status: async (data, query, user) => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                if (query.$updateUser && query.constellation) {
+                    user.constellationData = {
+                        ...user.constellationData,
+                        [query.constellation]: {
+                            ...(user.constellationData[query.constellation] ? user.constellationData[query.constellation] : {}),
+                            lastVisit: new Date()
+                        }
+                    }
+
+                    await user.save()
+                }
+
+                resolve(data)
+            } catch (e) {
+                console.warn(e)
+                resolve(data)
+            }
+        })
+    }
+}
+
 const typeCallbacks = {
     user: async (data, query, user, previous) => {
         return new Promise(async (resolve, reject) => {
@@ -438,6 +465,8 @@ const parseQuery = function (query, user) {
                 cancel = true
             }
         }
+
+        if (key == '$updateUser') delete parsedQuery.$updateUser
 
         if (value && (typeof value === 'object' && !Array.isArray(value))) {
             let entries = Object.entries(value)

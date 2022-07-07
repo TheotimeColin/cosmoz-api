@@ -257,6 +257,65 @@ exports.reactStatus = async function (req, res) {
 }
 
 exports.getFeed = async function (req, res) {
+    let data = {}
+    let errors = []
+
+    try {
+        let user = await authenticate(req.headers)
+        if (!user) throw Error('no-user')
+
+        let statuses = await Promise.all(user.constellations.map(async c => {
+            let statuses = await Entities.status.model.find({
+                constellation: c
+            }, null, {
+                limit: 20,
+                sort: { createdAt: 'desc' }
+            })
+
+            return statuses
+        }))
+
+        data.statuses = statuses.reduce((t, s) => [ ...t, ...s ], [])
+        data.gatherings = await Entities.gathering.model.find({
+            _id: { $in: user.gatherings.filter(g => g.status == 'attending' || g.status == 'confirmed').map(g => g._id) }
+        })
+    } catch (e) {
+        console.error(e)
+        errors.push(e.message)
+    }
+
+    res.send({ data, errors, status: errors.length > 0 ? 0 : 1 })
+}
+
+exports.getConstellationFeed = async function (req, res) {
+    let data = []
+    let errors = []
+
+    try {
+        let user = await authenticate(req.headers)
+        if (!user) throw Error('no-user')
+
+        let featuredTags = await Entities.tag.model.find({
+            constellation: req.body._id,
+            count: { $gte: 3 }
+        })
+
+        data = await Entities.status.model.find({
+            constellation: req.body._id,
+            $or: [
+                { tags: { $in: featuredTags.map(tag => tag.id) } },
+                { createdAt: { $gte: moment().subtract(3, 'days') } }
+            ]
+        })
+    } catch (e) {
+        console.error(e)
+        errors.push(e.message)
+    }
+
+    res.send({ data, errors, status: errors.length > 0 ? 0 : 1 })
+}
+
+exports._getFeed = async function (req, res) {
     let data = []
     let errors = []
 

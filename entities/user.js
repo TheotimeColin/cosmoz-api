@@ -39,6 +39,8 @@ let User = {
 
         isEncountered: { type: Boolean, default: false, write: 'private', read: 'public', replace: { encounters: '$requester' } },
 
+        constellationData: { type: Object, default: {}, read: 'self' },
+
         friends: [
             { type: mongoose.Schema.Types.ObjectId, write: 'editor', read: 'self', ref: 'user' }
         ],
