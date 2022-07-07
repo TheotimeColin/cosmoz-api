@@ -31,8 +31,6 @@ exports.postStatus = async function (req, res) {
             gathering = await Entities.gathering.model.findById(fields.gathering)
 
             if (!gathering) throw Error('no-gathering')
-
-            // further checks
         }
 
         if (fields.constellation) {
@@ -110,7 +108,13 @@ exports.postStatus = async function (req, res) {
         fields.content = striptags(fields.content)
         fields.content = linkifyHtml(fields.content, {
             target: '_blank',
-            truncate: 42
+            format: (value, type) => {
+                if (type === 'url' && value.length > 38) {
+                    value = value.slice(0, 38) + '...';
+                }
+                  
+                return value.replace('http://', '').replace('https://', '').replace('www.', '')
+            }
         })
         fields.content = fields.content.replace(/\n/g, '<br>')
         fields.embed = fields.embed ? JSON.parse(fields.embed) : null
