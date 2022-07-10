@@ -21,12 +21,16 @@ exports.gatheringCreate = async function (req, res) {
 
         let conste = fields.constellation ? await Entities.constellation.model.findOne({ _id: fields.constellation }) : null
         
-        let gathering = fields._id && fields._id !== 'new' ? await Entities.gathering.model.findOne({ _id: fields._id }) : null
+        let gathering = req.body._id && req.body._id !== 'new' ? await Entities.gathering.model.findOne({ id: req.body._id }) : null
 
         if (!fields.constellation) delete fields.constellation
 
         if (fields.type != 'hangout' && (!conste || ![...conste.organizers, ...conste.admins].includes(user._id)) && (!gathering || gathering && !gathering.organizers.includes(user._id))) {
             throw Error('not-authorized')
+        }
+
+        if (fields.type == 'hangout') {
+            fields.status = 'active'
         }
 
         if (!gathering) {
@@ -44,8 +48,9 @@ exports.gatheringCreate = async function (req, res) {
 
             await user.save()
         } else {
-            ['constellation', 'max', 'title', 'description', 'location', 'address', 'cover', 'dates'].forEach(field => {
-                if (fields[field]) gathering[field] = fields[field]
+            let toCheck = ['constellation', 'max', 'title', 'description', 'location', 'address', 'cover', 'dates']
+            toCheck.forEach(field => {
+                if (fields[field]) gathering.set({ [field]: fields[field] })
             })
 
             data = await gathering.save()
