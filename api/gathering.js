@@ -5,8 +5,60 @@ const { createMail, sendMail } = require('../utils/mailing')
 const moment = require('moment-timezone')
 moment.tz.setDefault('Europe/Paris')
 const { createNotification } = require('../utils/notifications')
+const shortid = require('shortid')
 
 const { uploadQR } = require('../utils/files')
+
+exports.gatheringCreate = async function (req, res) {
+    let data = null
+    let errors = []
+
+    try {
+        let fields = req.body.params
+        let user = await authenticate(req.headers)
+        
+        if (!user) throw Error('no-user')
+
+        let conste = fields.constellation ? await Entities.constellation.model.findOne({ _id: fields.constellation }) : null
+        
+        let gathering = fields._id && fields._id !== 'new' ? await Entities.gathering.model.findOne({ _id: fields._id }) : null
+
+        if (!fields.constellation) delete fields.constellation
+
+        if (fields.type != 'hangout' && (!conste || ![...conste.organizers, ...conste.admins].includes(user._id)) && (!gathering || gathering && !gathering.organizers.includes(user._id))) {
+            throw Error('not-authorized')
+        }
+
+        if (!gathering) {
+            data = await Entities.gathering.model.create({
+                ...fields,
+                id: shortid.generate(),
+                users: [ { _id: user._id, status: 'attending' } ],
+                owner: user._id
+            })
+
+            user.gatherings = [
+                ...user.gatherings,
+                { _id: data._id, status: 'attending' }
+            ]
+
+            await user.save()
+        } else {
+            ['constellation', 'max', 'title', 'description', 'location', 'address', 'cover', 'dates'].forEach(field => {
+                if (fields[field]) gathering[field] = fields[field]
+            })
+
+            data = await gathering.save()
+        }
+
+        data = await Entities.gathering.model.findOne({ _id: data._id })
+    } catch (e) {
+        console.error(e)
+        errors.push(e.message)
+    }
+
+    res.send({ data, errors, status: errors.length > 0 ? 0 : 1 })
+}
 
 exports.updateBookingStatus = async function (req, res) {
     let data = {}

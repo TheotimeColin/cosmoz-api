@@ -4,15 +4,20 @@ const notification = require('./notification')
 const status = require('./status')
 
 let Gathering = {
-    write: 'g-organizer',
+    write: 'g-member',
     read: 'public',
     fields: new mongoose.Schema({
         id: { type: String, write: 'private' },
         title: { type: String, write: 'g-organizer' },
+        type: { type: String, default: 'official', write: 'g-organizer' },
 
         location: { type: String, write: 'g-organizer' },
         address: { type: String, write: 'g-organizer' },
+
         date: { type: Date, write: 'g-organizer' },
+        dates: { type: Array, default: '[]', write: 'g-organizer' },
+        userDates: { type: Boolean, default: false },
+
         link: { type: String, write: 'g-organizer' },
         linkRegister: { type: Boolean, default: false, write: 'g-organizer' },
         visibility: { type: String, default: 'group', write: 'g-organizer' },

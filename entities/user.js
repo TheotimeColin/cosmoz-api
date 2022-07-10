@@ -46,7 +46,7 @@ let User = {
         ],
         
         constellations: [
-            { type: mongoose.Schema.Types.ObjectId, write: 'editor', read: 'self', ref: 'constellation' }
+            { type: mongoose.Schema.Types.ObjectId, write: 'editor', read: 'friends', ref: 'constellation' }
         ],
 
         followedConstellations: [

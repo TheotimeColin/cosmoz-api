@@ -24,7 +24,7 @@ const app = express()
 require('./entities/index')
 const { createEntity, getEntities, deleteEntity } = require('./api/entity')
 const { logUser, logOut, getUser, requestResetPassword, resetPassword, subscribeNewsletter } = require('./api/user')
-const { updateBookingStatus } = require('./api/gathering');
+const { gatheringCreate, updateBookingStatus } = require('./api/gathering');
 const { sendMentions, unmatch, createRequest, cancelRequest } = require('./api/affinities')
 const { getFeed, postStatus, reactStatus, getConstellationFeed } = require('./api/status')
 const { scrape } = require('./api/scraper')
@@ -148,6 +148,7 @@ mongoose.connection.once('open', async () => {
     app.post('/messages/post', upload.array('images', 4), postMessage)
 
     app.post('/gathering/book', updateBookingStatus)
+    app.post('/gathering/create', gatheringCreate)
 
     app.post('/status/feed', getFeed)
     app.post('/status/post', upload.array('images', 4), postStatus)

@@ -18,7 +18,7 @@ module.exports = async function (app) {
     }, null, true)
 
     app.locals.weekly = new CronJob('* * 11 * * Sun', async () => {
-        await sendNotifications()
+        // await sendNotifications()
         await sendPendingEmails()
     }, null, true)
 }
