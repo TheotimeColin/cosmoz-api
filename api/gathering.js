@@ -25,7 +25,7 @@ exports.gatheringCreate = async function (req, res) {
 
         if (!fields.constellation) delete fields.constellation
 
-        if (fields.type != 'hangout' && (!conste || ![...conste.organizers, ...conste.admins].includes(user._id)) && (!gathering || gathering && !gathering.organizers.includes(user._id))) {
+        if (fields.type != 'hangout' && (!conste || ![...conste.organizers, ...conste.admins].find((u) => u.equals(user._id))) && (!gathering || gathering && !gathering.organizers.find(u => u.equals(user._id)))) {
             throw Error('not-authorized')
         }
 
@@ -48,7 +48,7 @@ exports.gatheringCreate = async function (req, res) {
 
             await user.save()
         } else {
-            let toCheck = ['constellation', 'max', 'title', 'description', 'location', 'address', 'cover', 'dates']
+            let toCheck = ['constellation', 'max', 'title', 'description', 'location', 'address', 'cover', 'dates', 'date']
             toCheck.forEach(field => {
                 if (fields[field]) gathering.set({ [field]: fields[field] })
             })
