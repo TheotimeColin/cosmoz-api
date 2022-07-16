@@ -88,7 +88,7 @@ exports.updateBookingStatus = async function (req, res) {
                         throw Error('not-authorized-self')
                     } else if (status == 'ghosted') {
                         throw Error('not-authorized')
-                    } else if (status == 'attending' && gathering.users.filter(u => u.status == 'attending' || u.status == 'confirmed').length >= gathering.max) {
+                    } else if (status == 'attending' && gathering.max && gathering.users.filter(u => u.status == 'attending' || u.status == 'confirmed').length >= gathering.max) {
                         throw Error('g-full')
                     }
                 }
@@ -132,7 +132,7 @@ exports.updateBookingStatus = async function (req, res) {
                 }
 
                 gathering.users = [
-                    ...gathering.users.filter(u => u._id != userUpdate._id),
+                    ...gathering.users.filter(u => !userUpdate._id.equals(u._id)),
                     { _id: userUpdate._id, status: status }
                 ]
 
