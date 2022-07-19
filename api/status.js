@@ -165,6 +165,11 @@ exports.postStatus = async function (req, res) {
             }
         }
 
+        if (!fields.parent && constellation) {
+            constellation.lastPost = new Date()
+            await constellation.save()
+        }
+
         data = await Entities.status.model.findOne({ _id: data._id })
 
         if (parentData) {

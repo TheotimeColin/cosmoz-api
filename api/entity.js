@@ -179,6 +179,39 @@ const typeGetters = {
                 reject (e)
             }
         })
+    },
+    constellation: async (data, user) => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                data = Promise.all(data.map(async c => {
+                    let lastPosts = 0
+                    let lastEvents = 0
+
+                    if (user) {
+                        let constellationData = user.constellationData[c._id]
+                        
+                        lastPosts = await Entities.status.model.count({
+                            constellation: c._id,
+                            parent: null,
+                            createdAt: { $gte: constellationData?.lastVisitPosts ? constellationData.lastVisitPosts : moment().subtract(1, 'weeks').toDate() }
+                        })
+
+                        lastEvents = await Entities.gathering.model.count({
+                            constellation: c._id,
+                            status: 'active',
+                            createdAt: { $gte: constellationData?.lastVisitEvents ? constellationData.lastVisitEvents : moment().subtract(1, 'weeks').toDate() }
+                        })
+                    }
+                    
+
+                    return { ...c, lastPosts, lastEvents }
+                }))
+
+                resolve(data)
+            } catch (e) {
+                reject (data)
+            }
+        })
     }
 }
 
@@ -313,7 +346,7 @@ const postGet = {
                         ...user.constellationData,
                         [query.constellation]: {
                             ...(user.constellationData[query.constellation] ? user.constellationData[query.constellation] : {}),
-                            lastVisit: new Date()
+                            lastVisitPosts: new Date()
                         }
                     }
 
@@ -366,6 +399,8 @@ const typeCallbacks = {
                             ...constellation.gatherings,
                             data._id
                         ]
+
+                        if (data.status == 'active') constellation.lastEvent = new Date()
                         
                         await constellation.save()
                     }

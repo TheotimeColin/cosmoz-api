@@ -274,3 +274,50 @@ exports.consteLeave = async function (req, res) {
 
     res.send({ data, errors, status: errors.length > 0 ? 0 : 1 })
 }
+
+exports.consteGet = async function (req, res) {
+    let data = {}
+    let errors = []
+
+    try {
+        let user = await authenticate(req.headers)
+
+        data.constellation = await Entities.constellation.model.findOne({ slug: req.query.slug })
+
+        if (data.constellation) {
+            data.gatherings = await Entities.gathering.model.find({ constellation: data.constellation._id })
+
+            data.users = await Entities.user.model.find({ _id: { $in: [ ...data.constellation.members, ...data.constellation.organizers, ...data.constellation.admins, ...data.constellation.followers ] }})
+
+            if (user) {
+                let constellationData = user.constellationData[data.constellation._id]
+            
+                data.constellation = {
+                    ...data.constellation._doc,
+                    lastPosts: await Entities.status.model.count({
+                        constellation: data.constellation._id,
+                        parent: null,
+                        createdAt: { $gte: constellationData?.lastVisitPosts ? constellationData.lastVisitPosts : moment().subtract(1, 'weeks').toDate() }
+                    })
+                }
+                
+                user.constellationData = {
+                    ...user.constellationData,
+                    [data.constellation._id]: {
+                        ...(user.constellationData[data.constellation._id] ? user.constellationData[data.constellation._id] : {}),
+                        lastVisitEvents: new Date()
+                    }
+                }
+
+                await user.save()
+            }
+        }
+
+        
+    } catch (e) {
+        console.error(e)
+        errors.push(e.message)
+    }
+
+    res.send({ data, errors, status: errors.length > 0 ? 0 : 1 })
+} 

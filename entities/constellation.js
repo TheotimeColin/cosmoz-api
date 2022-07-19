@@ -42,6 +42,9 @@ let Constellation = {
         gatherings: [
             { type: mongoose.Schema.Types.ObjectId, write: 'g-organizer', ref: 'gathering' }
         ],
+
+        lastEvent: { type: Date, write: 'private' },
+        lastPost: { type: Date, write: 'private' },
     }, { timestamps: true })
 }
 
