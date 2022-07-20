@@ -281,7 +281,10 @@ exports.getFeed = async function (req, res) {
 
         let statuses = await Promise.all(user.constellations.map(async c => {
             let statuses = await Entities.status.model.find({
-                constellation: c
+                $or: [
+                    { constellation: c },
+                    { gathering: user.gatherings.filter(g => g.status == 'attending' || g.status == 'confirmed').map(g => g._id) }
+                ]
             }, null, {
                 limit: 5,
                 sort: { createdAt: 'desc' },
