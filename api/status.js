@@ -293,7 +293,10 @@ exports.getFeed = async function (req, res) {
 
         data.statuses = statuses.reduce((t, s) => [ ...t, ...s ], [])
         data.gatherings = await Entities.gathering.model.find({
-            _id: { $in: user.gatherings.filter(g => g.status == 'attending' || g.status == 'confirmed').map(g => g._id) }
+            $or: [
+                { constellation: { $in: user.constellations } },
+                { _id: user.gatherings.filter(g => g.status == 'attending' || g.status == 'confirmed').map(g => g._id) }
+            ]
         })
     } catch (e) {
         console.error(e)
