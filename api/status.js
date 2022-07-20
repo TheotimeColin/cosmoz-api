@@ -273,12 +273,19 @@ exports.getFeed = async function (req, res) {
         let user = await authenticate(req.headers)
         if (!user) throw Error('no-user')
 
+        let options = {
+            limit: 10,
+            skip: 0,
+            ...req.body.options
+        }
+
         let statuses = await Promise.all(user.constellations.map(async c => {
             let statuses = await Entities.status.model.find({
                 constellation: c
             }, null, {
-                limit: 20,
-                sort: { createdAt: 'desc' }
+                limit: 5,
+                sort: { createdAt: 'desc' },
+                ...options
             })
 
             return statuses
